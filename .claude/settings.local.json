@@ -15,7 +15,11 @@
       "Bash(pkill:*)",
       "Bash(npm run test-date-filter:*)",
       "Bash(npm run transacciones:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(./run-transacciones.bat)",
+      "Bash(./run-transacciones-hoy.bat)",
+      "Bash(npm run transacciones-hoy:*)",
+      "Bash(set HEADLESS=true)"
     ],
     "deny": [],
     "ask": []

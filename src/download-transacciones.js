@@ -538,20 +538,9 @@ async function downloadTransacciones() {
       const transaction = transactionsToProcess[i];
       logger.info(`\n[${i + 1}/${transactionsToProcess.length}] Procesando factura ${transaction.facturaNumber}...`);
 
-      let detailPage = null;
-
       try {
-        // Escuchar para nuevas tabs
-        const newTargetPromise = new Promise(resolve => {
-          browser.once('targetcreated', async target => {
-            if (target.type() === 'page') {
-              resolve(await target.page());
-            }
-          });
-        });
-
-        // Hacer click en el link de factura
-        const clicked = await page.evaluate((rowIndex, facturaIndex) => {
+        // Obtener el href del link directamente en lugar de hacer click
+        const facturaUrl = await page.evaluate((rowIndex, facturaIndex) => {
           const table = document.querySelector('table');
           const rows = Array.from(table.querySelectorAll('tbody tr'));
           const row = rows[rowIndex];
@@ -560,35 +549,16 @@ async function downloadTransacciones() {
           const facturaLink = facturaCell?.querySelector('a');
 
           if (facturaLink) {
-            facturaLink.click();
-            return true;
+            return facturaLink.href;
           }
-          return false;
+          return null;
         }, transaction.rowIndex, 2); // Índice 2 es "# Factura"
 
-        if (!clicked) {
-          throw new Error('No se pudo hacer click en el link de factura');
+        if (!facturaUrl) {
+          throw new Error('No se pudo obtener la URL de la factura');
         }
 
-        logger.info('✓ Click en factura, esperando nueva pestaña...');
-
-        // Esperar la nueva pestaña
-        detailPage = await Promise.race([
-          newTargetPromise,
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout esperando nueva pestaña')), 8000)
-          )
-        ]);
-
-        await detailPage.waitForTimeout(2000);
-
-        // Obtener URL del PDF
-        const pdfUrl = detailPage.url();
-        logger.info(`✓ PDF URL: ${pdfUrl}`);
-
-        // Obtener cookies
-        const cookies = await detailPage.cookies();
-        const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+        logger.info(`✓ URL obtenida: ${facturaUrl}`);
 
         // Generar nombre de archivo
         const safeClientName = transaction.clientName?.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'Cliente';
@@ -597,10 +567,29 @@ async function downloadTransacciones() {
 
         logger.info(`📥 Descargando: ${filename}`);
 
-        // Descargar PDF
-        await downloadPDFFromURL(pdfUrl, filePath, cookieString);
+        // Descargar PDF usando fetch desde la página principal (que ya tiene la sesión autenticada)
+        const pdfBuffer = await page.evaluate(async (url) => {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            const arrayBuffer = await blob.arrayBuffer();
+            // Convertir ArrayBuffer a Array para poder pasarlo de vuelta
+            return Array.from(new Uint8Array(arrayBuffer));
+          } catch (error) {
+            throw new Error(`Fetch failed: ${error.message}`);
+          }
+        }, facturaUrl);
 
-        logger.info(`✅ Descargado: ${filename}`);
+        // Convertir el array de vuelta a Buffer
+        const buffer = Buffer.from(pdfBuffer);
+
+        // Guardar el PDF
+        fs.writeFileSync(filePath, buffer);
+
+        logger.info(`✅ Descargado: ${filename} (${buffer.length} bytes)`);
 
         downloadResults.successful.push({
           facturaNumber: transaction.facturaNumber,
@@ -610,15 +599,8 @@ async function downloadTransacciones() {
           filename
         });
 
-        // Cerrar pestaña del PDF
-        if (detailPage && detailPage !== page) {
-          await detailPage.close();
-          detailPage = null;
-        }
-
-        // Volver a la página principal
-        await page.bringToFront();
-        await page.waitForTimeout(1000);
+        // Pequeño delay entre descargas para no sobrecargar el servidor
+        await page.waitForTimeout(500);
 
       } catch (error) {
         logger.error(`❌ Error descargando factura ${transaction.facturaNumber}: ${error.message}`);
@@ -629,18 +611,8 @@ async function downloadTransacciones() {
           error: error.message
         });
 
-        // Cerrar pestaña si quedó abierta
-        if (detailPage && detailPage !== page) {
-          try {
-            await detailPage.close();
-          } catch (e) {
-            // Ignorar errores al cerrar
-          }
-        }
-
-        // Volver a la página principal
-        await page.bringToFront();
-        await page.waitForTimeout(1000);
+        // Pequeño delay antes de continuar con la siguiente descarga
+        await page.waitForTimeout(500);
       }
     }
 
