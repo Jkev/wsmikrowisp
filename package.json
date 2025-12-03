@@ -16,12 +16,18 @@
     "manual-helper": "node src/manual-helper.js",
     "explore": "node src/explore.js"
   },
-  "keywords": ["mikrowisp", "scraper", "puppeteer", "invoices"],
+  "keywords": [
+    "mikrowisp",
+    "scraper",
+    "puppeteer",
+    "invoices"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "puppeteer": "^21.6.0",
     "date-fns": "^3.0.0",
+    "pdfkit": "^0.17.2",
+    "puppeteer": "^21.6.0",
     "winston": "^3.11.0"
   }
 }

@@ -8,6 +8,7 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import { format } from 'date-fns';
+import PDFDocument from 'pdfkit';
 
 /**
  * Script para descargar transacciones del día actual
@@ -686,6 +687,69 @@ async function downloadTransacciones() {
       fullPage: true
     });
     logger.info('📸 Screenshot guardado: logs/transacciones-completado.png');
+
+    // 11. Descargar PDF de Resumen
+    logger.info('\n📄 Descargando PDF de Resumen...');
+    try {
+      // Buscar y hacer click en el botón "Resumen PDF"
+      const resumenButtonClicked = await page.evaluate(() => {
+        // Buscar el botón por su onclick y texto
+        const buttons = Array.from(document.querySelectorAll('button.btn.btn-default'));
+        const resumenButton = buttons.find(btn => {
+          const hasOnclick = btn.getAttribute('onclick') === 'reporte_operaciones()';
+          const hasIcon = btn.querySelector('i.far.fa-file-pdf');
+          const hasText = btn.textContent?.includes('Resumen PDF');
+          return hasOnclick && hasIcon && hasText;
+        });
+
+        if (resumenButton) {
+          console.log('✓ Botón "Resumen PDF" encontrado, haciendo click...');
+          resumenButton.click();
+          return true;
+        }
+        console.log('✗ No se encontró el botón "Resumen PDF"');
+        return false;
+      });
+
+      if (resumenButtonClicked) {
+        logger.info('✅ Click en botón "Resumen PDF"');
+
+        // Esperar a que se abra una nueva pestaña o se genere el PDF
+        await page.waitForTimeout(3000);
+
+        // Verificar si se abrió una nueva pestaña
+        const pages = await browser.pages();
+        if (pages.length > 1) {
+          const resumenPage = pages[pages.length - 1];
+          await resumenPage.waitForTimeout(2000);
+
+          // Obtener la URL del PDF
+          const pdfUrl = resumenPage.url();
+          logger.info(`📥 URL del resumen: ${pdfUrl}`);
+
+          // Obtener cookies para la descarga
+          const cookies = await resumenPage.cookies();
+          const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+          // Nombre del archivo de resumen
+          const resumenFilename = `Resumen_Transacciones_${formattedDate.replace(/\//g, '-')}.pdf`;
+          const resumenFilePath = path.join(downloadDir, resumenFilename);
+
+          // Descargar el PDF
+          await downloadPDFFromURL(pdfUrl, resumenFilePath, cookieString);
+          logger.info(`✅ Resumen descargado: ${resumenFilename}`);
+
+          // Cerrar la pestaña del resumen
+          await resumenPage.close();
+        } else {
+          logger.warn('⚠️ No se abrió una nueva pestaña para el resumen');
+        }
+      } else {
+        logger.warn('⚠️ No se pudo hacer click en el botón "Resumen PDF"');
+      }
+    } catch (error) {
+      logger.error(`❌ Error al descargar PDF de resumen: ${error.message}`);
+    }
 
     logger.info('\n✅ PROCESO COMPLETADO');
     logger.info('📁 Archivos descargados en: ' + downloadDir);
