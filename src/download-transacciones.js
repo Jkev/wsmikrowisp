@@ -134,168 +134,132 @@ async function downloadTransacciones() {
 
     logger.info(`✅ Fechas configuradas: ${formattedDate} - ${formattedDate}`);
 
-      // Cerrar el datepicker haciendo click fuera de él
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+    // Cerrar el datepicker haciendo click fuera de él
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
 
-      // Hacer click fuera del datepicker para cerrarlo completamente
-      await page.click('body');
-      await page.waitForTimeout(500);
+    // Hacer click fuera del datepicker para cerrarlo completamente
+    await page.click('body');
+    await page.waitForTimeout(500);
 
-      // Buscar y hacer click en el botón de búsqueda/filtrar
-      logger.info('🔍 Buscando botón de búsqueda...');
-      const searchButtonClicked = await page.evaluate(() => {
-        // Buscar botones con iconos de búsqueda o texto "Buscar"
-        const buttons = Array.from(document.querySelectorAll('button, a, i'));
+    // Esperar a que la tabla se recargue después de configurar fechas
+    await page.waitForTimeout(5000);
+    logger.info('✅ Filtro de fecha aplicado');
 
-        const searchButton = buttons.find(btn => {
-          const text = btn.textContent?.toLowerCase() || '';
-          const classes = btn.className?.toLowerCase() || '';
-          return text.includes('buscar') ||
-                 text.includes('filtrar') ||
-                 classes.includes('search') ||
-                 classes.includes('fa-search') ||
-                 classes.includes('glyphicon-search');
+    // Hacer click en el botón del dropdown de página (que muestra "15")
+    logger.info('🔘 Buscando botón de paginación para mostrar todas las transacciones...');
+
+    // Esperar un poco más para asegurar que la tabla esté cargada
+    await page.waitForTimeout(2000);
+
+    const todosClicked = await page.evaluate(() => {
+      // Buscar el botón dropdown que contiene "buttons-page-length"
+      const buttons = Array.from(document.querySelectorAll('button.buttons-page-length'));
+
+      console.log(`Botones de paginación encontrados: ${buttons.length}`);
+
+      // También buscar por la clase completa
+      const allButtons = Array.from(document.querySelectorAll('button'));
+      const pageLengthButtons = allButtons.filter(btn =>
+        btn.className.includes('buttons-page-length') ||
+        btn.getAttribute('aria-controls') === 'list-pago-cliente'
+      );
+      console.log(`Botones con buttons-page-length o aria-controls: ${pageLengthButtons.length}`);
+
+      if (pageLengthButtons.length > 0) {
+        const pageButton = pageLengthButtons[0];
+        console.log(`✓ Botón de paginación encontrado: "${pageButton.textContent?.trim()}"`);
+        console.log(`  Clases: ${pageButton.className}`);
+        console.log(`  aria-expanded: ${pageButton.getAttribute('aria-expanded')}`);
+        pageButton.click();
+        return true;
+      }
+
+      if (buttons.length > 0) {
+        const pageButton = buttons[0];
+        console.log(`✓ Botón de paginación encontrado (fallback): "${pageButton.textContent?.trim()}"`);
+        pageButton.click();
+        return true;
+      }
+
+      console.log('✗ No se encontró el botón de paginación');
+      return false;
+    });
+
+    // Verificar cuántas filas hay antes del click en "Todos"
+    const rowsBeforeTodos = await page.evaluate(() => {
+      const table = document.querySelector('table');
+      return table?.querySelectorAll('tbody tr').length || 0;
+    });
+    logger.info(`📊 Filas antes de seleccionar "Todos": ${rowsBeforeTodos}`);
+
+    if (todosClicked) {
+      logger.info('✅ Botón de paginación clickeado, esperando dropdown...');
+      await page.waitForTimeout(1500);
+
+      // Hacer click en la opción "Mostrar todos" del dropdown
+      const todosOptionClicked = await page.evaluate(() => {
+        // Buscar específicamente en elementos del dropdown menu de DataTables
+        // El dropdown de paginación de DataTables usa <a> con clase "dropdown-item" o dentro de .dt-button-collection
+        const dropdownItems = Array.from(document.querySelectorAll('.dt-button-collection a, .dt-button-collection span, .dt-button-collection button, a.dt-button'));
+
+        console.log(`Items en dropdown encontrados: ${dropdownItems.length}`);
+
+        // Buscar elemento que contenga exactamente "Mostrar todos"
+        const todosOption = dropdownItems.find(el => {
+          const text = el.textContent?.trim();
+          // Debe ser exactamente "Mostrar todos" o muy corto (para evitar capturar toda la página)
+          return (text === 'Mostrar todos' || text === 'Todos' || text === 'All') && text.length < 20;
         });
 
-        if (searchButton) {
-          console.log(`✓ Botón de búsqueda encontrado: ${searchButton.tagName}`);
-          searchButton.click();
+        if (todosOption) {
+          console.log(`✓ Opción encontrada: "${todosOption.textContent?.trim()}", haciendo click...`);
+          todosOption.click();
           return true;
         }
+
+        // Fallback: buscar en cualquier elemento visible pero con longitud corta
+        const allElements = Array.from(document.querySelectorAll('a, li, span, button'));
+        const shortTexts = allElements.filter(el => {
+          const rect = el.getBoundingClientRect();
+          const text = el.textContent?.trim();
+          return rect.width > 0 && rect.height > 0 && text && text.length < 20;
+        });
+
+        console.log('✗ No se encontró en dropdown, buscando en elementos cortos visibles...');
+        console.log('Opciones visibles:', shortTexts.map(el => el.textContent?.trim()).slice(0, 20));
+
+        const todosOptionFallback = shortTexts.find(el => {
+          const text = el.textContent?.trim();
+          return text === 'Mostrar todos' || text === 'Todos';
+        });
+
+        if (todosOptionFallback) {
+          console.log(`✓ Opción encontrada (fallback): "${todosOptionFallback.textContent?.trim()}"`);
+          todosOptionFallback.click();
+          return true;
+        }
+
+        console.log('✗ No se encontró la opción "Mostrar todos"');
         return false;
       });
 
-      if (searchButtonClicked) {
-        logger.info('✅ Botón de búsqueda clickeado');
-      } else {
-        logger.info('⚠️ No se encontró botón de búsqueda, presionando Enter...');
-        await dateToInput.press('Enter');
-      }
+      if (todosOptionClicked) {
+        logger.info('✅ Opción "Todos" seleccionada, esperando recarga...');
+        await page.waitForTimeout(5000);
 
-      // Esperar a que la tabla se recargue
-      await page.waitForTimeout(5000);
-
-      logger.info('✅ Filtro de fecha aplicado');
-
-      // Hacer click en el botón del dropdown de página (que muestra "15")
-      logger.info('🔘 Buscando botón de paginación para mostrar todas las transacciones...');
-
-      // Esperar un poco más para asegurar que la tabla esté cargada
-      await page.waitForTimeout(2000);
-
-      const todosClicked = await page.evaluate(() => {
-        // Buscar el botón dropdown que contiene "buttons-page-length"
-        const buttons = Array.from(document.querySelectorAll('button.buttons-page-length'));
-
-        console.log(`Botones de paginación encontrados: ${buttons.length}`);
-
-        // También buscar por la clase completa
-        const allButtons = Array.from(document.querySelectorAll('button'));
-        const pageLengthButtons = allButtons.filter(btn =>
-          btn.className.includes('buttons-page-length') ||
-          btn.getAttribute('aria-controls') === 'list-pago-cliente'
-        );
-        console.log(`Botones con buttons-page-length o aria-controls: ${pageLengthButtons.length}`);
-
-        if (pageLengthButtons.length > 0) {
-          const pageButton = pageLengthButtons[0];
-          console.log(`✓ Botón de paginación encontrado: "${pageButton.textContent?.trim()}"`);
-          console.log(`  Clases: ${pageButton.className}`);
-          console.log(`  aria-expanded: ${pageButton.getAttribute('aria-expanded')}`);
-          pageButton.click();
-          return true;
-        }
-
-        if (buttons.length > 0) {
-          const pageButton = buttons[0];
-          console.log(`✓ Botón de paginación encontrado (fallback): "${pageButton.textContent?.trim()}"`);
-          pageButton.click();
-          return true;
-        }
-
-        console.log('✗ No se encontró el botón de paginación');
-        return false;
-      });
-
-      // Verificar cuántas filas hay antes del click en "Todos"
-      const rowsBeforeTodos = await page.evaluate(() => {
-        const table = document.querySelector('table');
-        return table?.querySelectorAll('tbody tr').length || 0;
-      });
-      logger.info(`📊 Filas antes de seleccionar "Todos": ${rowsBeforeTodos}`);
-
-      if (todosClicked) {
-        logger.info('✅ Botón de paginación clickeado, esperando dropdown...');
-        await page.waitForTimeout(1500);
-
-        // Hacer click en la opción "Mostrar todos" del dropdown
-        const todosOptionClicked = await page.evaluate(() => {
-          // Buscar específicamente en elementos del dropdown menu de DataTables
-          // El dropdown de paginación de DataTables usa <a> con clase "dropdown-item" o dentro de .dt-button-collection
-          const dropdownItems = Array.from(document.querySelectorAll('.dt-button-collection a, .dt-button-collection span, .dt-button-collection button, a.dt-button'));
-
-          console.log(`Items en dropdown encontrados: ${dropdownItems.length}`);
-
-          // Buscar elemento que contenga exactamente "Mostrar todos"
-          const todosOption = dropdownItems.find(el => {
-            const text = el.textContent?.trim();
-            // Debe ser exactamente "Mostrar todos" o muy corto (para evitar capturar toda la página)
-            return (text === 'Mostrar todos' || text === 'Todos' || text === 'All') && text.length < 20;
-          });
-
-          if (todosOption) {
-            console.log(`✓ Opción encontrada: "${todosOption.textContent?.trim()}", haciendo click...`);
-            todosOption.click();
-            return true;
-          }
-
-          // Fallback: buscar en cualquier elemento visible pero con longitud corta
-          const allElements = Array.from(document.querySelectorAll('a, li, span, button'));
-          const shortTexts = allElements.filter(el => {
-            const rect = el.getBoundingClientRect();
-            const text = el.textContent?.trim();
-            return rect.width > 0 && rect.height > 0 && text && text.length < 20;
-          });
-
-          console.log('✗ No se encontró en dropdown, buscando en elementos cortos visibles...');
-          console.log('Opciones visibles:', shortTexts.map(el => el.textContent?.trim()).slice(0, 20));
-
-          const todosOptionFallback = shortTexts.find(el => {
-            const text = el.textContent?.trim();
-            return text === 'Mostrar todos' || text === 'Todos';
-          });
-
-          if (todosOptionFallback) {
-            console.log(`✓ Opción encontrada (fallback): "${todosOptionFallback.textContent?.trim()}"`);
-            todosOptionFallback.click();
-            return true;
-          }
-
-          console.log('✗ No se encontró la opción "Mostrar todos"');
-          return false;
+        // Verificar cuántas filas hay después del click
+        const rowsAfterTodos = await page.evaluate(() => {
+          const table = document.querySelector('table');
+          return table?.querySelectorAll('tbody tr').length || 0;
         });
-
-        if (todosOptionClicked) {
-          logger.info('✅ Opción "Todos" seleccionada, esperando recarga...');
-          await page.waitForTimeout(5000);
-
-          // Verificar cuántas filas hay después del click
-          const rowsAfterTodos = await page.evaluate(() => {
-            const table = document.querySelector('table');
-            return table?.querySelectorAll('tbody tr').length || 0;
-          });
-          logger.info(`📊 Filas después de seleccionar "Todos": ${rowsAfterTodos}`);
-          logger.info('✅ Mostrando todas las transacciones');
-        } else {
-          logger.warn('⚠️ No se pudo seleccionar la opción "Todos" del dropdown');
-        }
+        logger.info(`📊 Filas después de seleccionar "Todos": ${rowsAfterTodos}`);
+        logger.info('✅ Mostrando todas las transacciones');
       } else {
-        logger.warn('⚠️ No se encontró el botón de paginación');
+        logger.warn('⚠️ No se pudo seleccionar la opción "Todos" del dropdown');
       }
-
     } else {
-      logger.warn(`⚠️ Solo se encontraron ${allInputs.length} inputs de texto`);
+      logger.warn('⚠️ No se encontró el botón de paginación');
     }
 
     // 5. Verificar y activar columna "# Factura" si es necesario
