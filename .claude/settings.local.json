@@ -12,7 +12,8 @@
       "Bash(npm test)",
       "Bash(npm run test-transacciones:*)",
       "Bash(tee:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(npm run test-date-filter:*)"
     ],
     "deny": [],
     "ask": []

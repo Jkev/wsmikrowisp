@@ -1,5 +1,5 @@
 export const config = {
-  loginUrl: 'http://portal.tu-subdominio.mikrowisp.net/admin/login',
+  loginUrl: 'https://portal.tu-subdominio.mikrowisp.net/admin/login',
   username: 'TU_USUARIO',
   password: 'TU_CONTRASEÑA',
 

@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 import { logger } from './utils/logger.js';
-import { getYesterdayDate, getTodayDate } from './utils/helpers.js';
+import { getYesterdayDate, getYesterdayDateFormatted, getTodayDate } from './utils/helpers.js';
 import AuthService from './services/auth.service.js';
 import NavigationService from './services/navigation.service.js';
 import fs from 'fs';
@@ -100,43 +100,39 @@ async function downloadTransacciones() {
     await page.waitForTimeout(8000);
     logger.info('✅ Navegación exitosa a Transacciones');
 
-    // 3. Obtener fecha del día anterior
-    const targetDate = getYesterdayDate();
-    logger.info(`📅 Fecha objetivo (día anterior): ${targetDate}`);
+    // 3. Obtener fecha del día anterior en formato DD/MM/YYYY
+    const formattedDate = getYesterdayDateFormatted();
+    logger.info(`📅 Fecha objetivo (día anterior): ${formattedDate}`);
 
-    // Convertir fecha de YYYY-MM-DD a DD/MM/YYYY (formato de MikroWISP)
-    const [year, month, day] = targetDate.split('-');
-    const formattedDate = `${day}/${month}/${year}`;
-    logger.info(`📅 Fecha formateada: ${formattedDate}`);
-
-    // 4. Buscar y completar los campos de fecha
-    logger.info('🔍 Buscando inputs de fecha...');
+    // 4. Configurar los campos de fecha usando page.evaluate (para inputs readonly)
+    logger.info('🔍 Configurando inputs de fecha...');
 
     await page.waitForTimeout(3000);
 
-    const allInputs = await page.$$('input[type="text"]');
-    logger.info(`📝 Inputs de texto encontrados: ${allInputs.length}`);
+    // Esperar explícitamente a que los inputs estén presentes
+    await page.waitForSelector('#desde', { timeout: 10000 });
+    await page.waitForSelector('#hasta', { timeout: 10000 });
+    logger.info('✓ Inputs #desde y #hasta encontrados');
 
-    if (allInputs.length >= 2) {
-      // Los primeros 2 inputs de texto son las fechas "desde" y "hasta"
-      const dateFromInput = allInputs[0];
-      const dateToInput = allInputs[1];
+    // Configurar valores directamente usando page.evaluate (funciona con readonly inputs)
+    await page.evaluate((dateValue) => {
+      const desdeInput = document.getElementById('desde');
+      const hastaInput = document.getElementById('hasta');
 
-      // Limpiar y escribir fecha "desde"
-      logger.info('📝 Ingresando fecha "desde"...');
-      await dateFromInput.click({ clickCount: 3 }); // Seleccionar todo
-      await page.keyboard.press('Backspace'); // Borrar
-      await page.waitForTimeout(300);
-      await dateFromInput.type(formattedDate, { delay: 100 });
+      if (desdeInput) {
+        desdeInput.value = dateValue;
+        desdeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        desdeInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
 
-      // Limpiar y escribir fecha "hasta"
-      logger.info('📝 Ingresando fecha "hasta"...');
-      await dateToInput.click({ clickCount: 3 }); // Seleccionar todo
-      await page.keyboard.press('Backspace'); // Borrar
-      await page.waitForTimeout(300);
-      await dateToInput.type(formattedDate, { delay: 100 });
+      if (hastaInput) {
+        hastaInput.value = dateValue;
+        hastaInput.dispatchEvent(new Event('change', { bubbles: true }));
+        hastaInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }, formattedDate);
 
-      logger.info(`✅ Fechas ingresadas: ${formattedDate} - ${formattedDate}`);
+    logger.info(`✅ Fechas configuradas: ${formattedDate} - ${formattedDate}`);
 
       // Cerrar el datepicker haciendo click fuera de él
       await page.keyboard.press('Escape');

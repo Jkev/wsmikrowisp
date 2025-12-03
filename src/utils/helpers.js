@@ -11,6 +11,14 @@ export function getYesterdayDate() {
 }
 
 /**
+ * Obtiene la fecha del día anterior en formato DD/MM/YYYY (para MikroWISP)
+ */
+export function getYesterdayDateFormatted() {
+  const yesterday = subDays(new Date(), 1);
+  return format(yesterday, 'dd/MM/yyyy');
+}
+
+/**
  * Obtiene la fecha actual en formato YYYY-MM-DD
  */
 export function getTodayDate() {
@@ -101,6 +109,7 @@ export function calculateProgress(current, total) {
 
 export default {
   getYesterdayDate,
+  getYesterdayDateFormatted,
   getTodayDate,
   createDownloadFolder,
   generatePDFFilename,
