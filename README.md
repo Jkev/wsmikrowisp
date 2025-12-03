@@ -1,257 +1,198 @@
-# MikroWISP Scraper - Descarga Automática de PDFs de Facturas
+# MikroWISP Scraper - Descarga Automática de Transacciones
 
-Sistema automatizado para descargar PDFs de recibos de pago de clientes en MikroWISP.
+Script automatizado para descargar facturas de transacciones desde MikroWISP usando Puppeteer.
 
-## Características
+## 📋 Requisitos Previos
 
-- ✅ Login automático en MikroWISP
-- ✅ Filtrado de facturas por fecha (día anterior por defecto)
-- ✅ Descarga masiva de PDFs
-- ✅ Manejo de reintentos automáticos
-- ✅ Nomenclatura organizada: `YYYY-MM-DD_{idCliente}_{nombreCliente}_{numFactura}.pdf`
-- ✅ Logs detallados de cada ejecución
-- ✅ Reporte JSON de descargas exitosas y fallidas
-- ✅ Soporte para ejecución programada (cron)
+- **Node.js** versión 16 o superior ([Descargar aquí](https://nodejs.org/))
+- **Git** ([Descargar aquí](https://git-scm.com/))
+- Acceso a MikroWISP con credenciales válidas
 
-## Requisitos
+## 🚀 Instalación
 
-- Node.js 18+
-- npm o yarn
-- Sistema operativo: Windows, Linux o macOS
-
-## Instalación
+### 1. Clonar el repositorio
 
 ```bash
-# Instalar dependencias
-npm install
-
-# Configurar credenciales
-# Editar src/config/credentials.js con tus credenciales
+git clone <URL_DEL_REPOSITORIO>
+cd wsmikrowisp
 ```
 
-## Configuración
+### 2. Instalar dependencias
 
-### 1. Credenciales
+```bash
+npm install
+```
 
-Edita `src/config/credentials.js`:
+Esto instalará:
+- `puppeteer` - Automatización del navegador
+- `date-fns` - Manejo de fechas
+- `winston` - Sistema de logging
+
+### 3. Configurar credenciales
+
+Edita el archivo `src/config/credentials.js` con tus credenciales de MikroWISP:
 
 ```javascript
-export const config = {
-  loginUrl: 'https://portal.digy.mx/admin/login',
-  username: 'tu-usuario',
-  password: 'tu-contraseña',
-  // ...
+export const credentials = {
+  username: 'TU_USUARIO',
+  password: 'TU_CONTRASEÑA',
+  url: 'https://tu-subdominio.mikrowisp.net'
 };
 ```
 
-### 2. Selectores (IMPORTANTE)
+**⚠️ IMPORTANTE:** Nunca subas este archivo a Git con tus credenciales reales. El archivo ya está en `.gitignore`.
 
-**Antes de usar en producción**, debes actualizar los selectores en `src/config/selectors.js` según la estructura real del sitio.
+## 📖 Uso
 
-Para obtener los selectores correctos:
+### Modo Manual (con navegador visible)
 
-```bash
-# Ejecutar script de exploración manual
-npm run manual-helper
-
-# Esto abrirá el navegador con DevTools
-# Navega a Finanzas → Facturas
-# En la consola del navegador ejecuta: await window.captureInfo()
-# Usa los resultados para actualizar src/config/selectors.js
-```
-
-## Uso
-
-### Modo Manual (Para pruebas)
+Para ver el navegador mientras se ejecuta (útil para debugging):
 
 ```bash
-# Ejecutar con navegador visible (modo test)
-npm run test
-
-# Ejecutar con navegador visible para una fecha específica
-npm start -- --no-headless --date=2024-12-01
+npm run transacciones
 ```
 
-### Modo Automático (Producción)
+El navegador permanecerá abierto al finalizar para que puedas revisar.
+
+### Modo Headless (sin navegador visible)
+
+Para ejecutar en segundo plano (ideal para producción/automatización):
 
 ```bash
-# Ejecutar en modo headless (sin interfaz gráfica)
-npm start
+# Windows PowerShell
+$env:HEADLESS="true"
+npm run transacciones
 
-# Descargar PDFs de una fecha específica
-npm start -- --date=2024-12-01
+# Windows CMD
+set HEADLESS=true && npm run transacciones
+
+# Linux/Mac
+HEADLESS=true npm run transacciones
 ```
 
-### Opciones de línea de comandos
+### Con Logging Persistente
 
-- `--test`: Modo test (navegador visible)
-- `--no-headless`: Mostrar navegador (útil para debugging)
-- `--date=YYYY-MM-DD`: Fecha específica a procesar (por defecto: día anterior)
+Para guardar logs con fecha:
 
-## Estructura de Archivos
+```bash
+npm run transacciones:log
+```
+
+## 🗂️ Estructura de Archivos
 
 ```
 wsmikrowisp/
 ├── src/
 │   ├── config/
-│   │   ├── credentials.js      # Credenciales (NO commit)
-│   │   └── selectors.js        # Selectores CSS configurables
-│   ├── services/
-│   │   ├── auth.service.js     # Servicio de autenticación
-│   │   ├── navigation.service.js # Servicio de navegación
-│   │   ├── scraper.service.js  # Servicio de scraping
-│   │   └── download.service.js # Servicio de descarga PDFs
-│   ├── utils/
-│   │   ├── logger.js           # Sistema de logging
-│   │   └── helpers.js          # Funciones auxiliares
-│   ├── index.js                # Script principal
-│   ├── manual-helper.js        # Helper para exploración manual
-│   └── explore*.js             # Scripts de exploración
-├── downloads/                   # PDFs descargados (por fecha)
-│   └── 2024-12-03/
-│       ├── 2024-12-02_1234_JuanPerez_INV001.pdf
-│       ├── 2024-12-02_5678_MariaGomez_INV002.pdf
-│       └── download-report.json
-├── logs/                        # Logs de ejecución
-│   ├── scraper.log
-│   ├── errors.log
-│   └── run-2024-12-03.log
+│   │   └── credentials.js          # ⚠️ Configurar con tus credenciales
+│   ├── download-transacciones.js   # Script principal de producción
+│   ├── test-transacciones.js       # Script de testing
+│   └── ...
+├── downloads/
+│   └── transacciones/
+│       └── YYYY-MM-DD/             # PDFs organizados por fecha
+│           ├── MX$350.00_5908_Cliente_Nombre.pdf
+│           └── download-report.json
+├── logs/
+│   ├── last-run.log                # Última ejecución
+│   └── transacciones-YYYY-MM-DD.log
 ├── package.json
 └── README.md
 ```
 
-## Programación Automática (Cron)
+## 🤖 Automatización
 
-### Linux / macOS
+### Windows - Task Scheduler
 
-Edita el crontab:
+1. Abrir "Programador de tareas" (Task Scheduler)
+2. Crear Tarea Básica:
+   - **Nombre:** "MikroWISP Transacciones Diarias"
+   - **Desencadenador:** Diariamente a las 3:00 AM
+   - **Acción:** Ejecutar script batch (ver `AUTOMATION_GUIDE.md`)
+
+### Linux/Mac - Cron
 
 ```bash
+# Editar crontab
 crontab -e
+
+# Agregar línea para ejecutar todos los días a las 3 AM
+0 3 * * * cd /ruta/completa/wsmikrowisp && HEADLESS=true npm run transacciones >> logs/cron.log 2>&1
 ```
 
-Agrega la siguiente línea para ejecutar diariamente a las 2 AM:
+**Ver guía completa en:** `AUTOMATION_GUIDE.md`
 
-```cron
-0 2 * * * cd /ruta/completa/wsmikrowisp && /usr/bin/node src/index.js >> logs/cron.log 2>&1
-```
+## ❓ Solución de Problemas
 
-### Windows (Task Scheduler)
-
-1. Abre "Programador de tareas" (Task Scheduler)
-2. Crear tarea básica
-3. Nombre: "MikroWISP PDF Downloader"
-4. Desencadenador: Diariamente a las 2:00 AM
-5. Acción: Iniciar programa
-   - Programa: `node.exe` (ruta completa, ej: `C:\Program Files\nodejs\node.exe`)
-   - Argumentos: `src\index.js`
-   - Iniciar en: Ruta completa al proyecto
-
-### Verificar ejecuciones programadas
+### Error: "Cannot find module 'puppeteer'"
 
 ```bash
-# Ver el log del último cron
-tail -f logs/cron.log
-
-# Ver logs de ejecución
-ls -la logs/run-*.log
+npm install
 ```
 
-## Monitoreo y Logs
+### Error: "Credenciales inválidas"
 
-Cada ejecución genera:
+1. Verifica que `src/config/credentials.js` tenga tus credenciales correctas
+2. Prueba hacer login manualmente en tu navegador
 
-1. **Log general**: `logs/scraper.log` - Historial de todas las ejecuciones
-2. **Log de ejecución**: `logs/run-YYYY-MM-DD.log` - Log específico de cada día
-3. **Log de errores**: `logs/errors.log` - Solo errores
-4. **Reporte JSON**: `downloads/YYYY-MM-DD/download-report.json` - Detalle de descargas
+### El navegador no se cierra automáticamente
 
-### Ejemplo de reporte JSON
+- Asegúrate de ejecutar con `HEADLESS=true`
+- En modo visible, el navegador permanece abierto intencionalmente
 
-```json
-{
-  "timestamp": "2024-12-03T02:00:00.000Z",
-  "summary": {
-    "total": 500,
-    "successful": 498,
-    "failed": 2
-  },
-  "successfulDownloads": [
-    {
-      "invoiceNumber": "INV-001",
-      "clientName": "Juan Pérez",
-      "clientId": "1234",
-      "filename": "2024-12-02_1234_JuanPerez_INV-001.pdf"
-    }
-  ],
-  "failedDownloads": [
-    {
-      "invoiceNumber": "INV-999",
-      "clientName": "Cliente X",
-      "clientId": "9999",
-      "error": "Timeout esperando descarga"
-    }
-  ]
-}
-```
+### No se descargan los PDFs
 
-## Solución de Problemas
+1. Revisa el log: `logs/last-run.log`
+2. Revisa el screenshot de error: `logs/transacciones-error.png`
+3. Ejecuta en modo visible: `npm run transacciones`
 
-### Error: "Navegación timeout"
+### Error: "npm: command not found"
 
-- Verifica tu conexión a internet
-- Aumenta el `navigationTimeout` en `src/config/credentials.js`
-- Ejecuta en modo `--no-headless` para ver qué está pasando
+- Instala Node.js desde [nodejs.org](https://nodejs.org/)
+- Reinicia la terminal después de instalar
 
-### Error: "Login falló"
+## 📊 ¿Qué hace el script?
 
-- Verifica las credenciales en `src/config/credentials.js`
-- Verifica que no haya CAPTCHA o 2FA activado
+1. **Login automático** - Inicia sesión en MikroWISP
+2. **Navega a Transacciones** - Va a la sección de transacciones
+3. **Filtra por fecha** - Selecciona el día anterior
+4. **Carga todos los registros** - Hace click en "Mostrar todos"
+5. **Descarga PDFs** - Descarga todas las facturas del día anterior
+6. **Genera reporte** - Crea un JSON con resumen de la descarga
 
-### No se encuentran facturas
+## 🔐 Seguridad
 
-- Verifica que los selectores en `src/config/selectors.js` sean correctos
-- Ejecuta `npm run manual-helper` para explorar manualmente
-- Revisa el log: `logs/run-*.log`
+- **NUNCA** subas `src/config/credentials.js` a Git
+- El archivo ya está en `.gitignore` para prevenir esto
+- Considera usar variables de entorno para producción
 
-### PDFs no se descargan
-
-- Verifica los selectores del botón de descarga en `src/config/selectors.js`
-- Verifica permisos de escritura en la carpeta `downloads/`
-- Revisa el `download-report.json` para ver errores específicos
-
-## Scripts de Desarrollo
+## 🛠️ Scripts Disponibles
 
 ```bash
-# Exploración manual con helpers
-npm run manual-helper
-
-# Modo exploración automática (obsoleto, usar manual-helper)
-npm run explore
+npm run transacciones          # Ejecutar en modo visible
+npm run transacciones:log      # Ejecutar con logging persistente
+npm run test-transacciones     # Versión de testing
 ```
 
-## Seguridad
+## 📝 Variables de Entorno
 
-- ⚠️  **NUNCA** commitees el archivo `src/config/credentials.js` a git
-- El archivo `.gitignore` ya está configurado para ignorarlo
-- Usa variables de entorno para producción si es necesario
+| Variable | Valores | Descripción |
+|----------|---------|-------------|
+| `HEADLESS` | `true`/`false` | Ejecutar sin interfaz gráfica |
 
-## Mantenimiento
+## 📞 Soporte
 
-### Actualizar selectores
+Si encuentras problemas:
 
-Si MikroWISP cambia su interfaz:
+1. Revisa los logs en `logs/last-run.log`
+2. Revisa los screenshots de error en `logs/`
+3. Ejecuta en modo visible para debugging
+4. Consulta `AUTOMATION_GUIDE.md` para más detalles
 
-1. Ejecuta `npm run manual-helper`
-2. Navega manualmente al sitio
-3. Usa DevTools para identificar nuevos selectores
-4. Actualiza `src/config/selectors.js`
-5. Prueba con `npm run test`
-
-## Soporte
-
-Para reportar problemas o sugerencias, contacta al equipo de desarrollo.
-
-## Licencia
+## 📄 Licencia
 
 MIT
+
+---
+
+**Desarrollado para automatizar la descarga de transacciones de MikroWISP**
