@@ -1,0 +1,25 @@
+{
+  "name": "mikrowisp-scraper",
+  "version": "1.0.0",
+  "description": "Automated PDF invoice downloader for MikroWISP",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node src/index.js --test",
+    "test-nav": "node src/test-navigation.js",
+    "test-transacciones": "node src/test-transacciones.js",
+    "transacciones": "node src/download-transacciones.js",
+    "transacciones:log": "node src/download-transacciones.js 2>&1 | tee logs/transacciones-$(date +%Y-%m-%d).log",
+    "manual-helper": "node src/manual-helper.js",
+    "explore": "node src/explore.js"
+  },
+  "keywords": ["mikrowisp", "scraper", "puppeteer", "invoices"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^21.6.0",
+    "date-fns": "^3.0.0",
+    "winston": "^3.11.0"
+  }
+}
