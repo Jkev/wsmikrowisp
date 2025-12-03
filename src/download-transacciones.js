@@ -591,7 +591,7 @@ async function downloadTransacciones() {
 
         // Generar nombre de archivo
         const safeClientName = transaction.clientName?.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'Cliente';
-        const filename = `${transaction.amount}_${transaction.clientId}_${safeClientName}_${transaction.facturaNumber}.pdf`;
+        const filename = `${transaction.facturaNumber}_${transaction.amount}_${safeClientName}.pdf`;
         const filePath = path.join(downloadDir, filename);
 
         logger.info(`📥 Descargando: ${filename}`);
