@@ -11,6 +11,7 @@
     "test-transacciones": "node src/test-transacciones.js",
     "test-date-filter": "node src/test-date-filter.js",
     "transacciones": "node src/download-transacciones.js",
+    "transacciones-hoy": "node src/download-transacciones-hoy.js",
     "transacciones:log": "node src/download-transacciones.js 2>&1 | tee logs/transacciones-$(date +%Y-%m-%d).log",
     "manual-helper": "node src/manual-helper.js",
     "explore": "node src/explore.js"

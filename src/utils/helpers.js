@@ -26,6 +26,13 @@ export function getTodayDate() {
 }
 
 /**
+ * Obtiene la fecha actual en formato DD/MM/YYYY (para MikroWISP)
+ */
+export function getTodayDateFormatted() {
+  return format(new Date(), 'dd/MM/yyyy');
+}
+
+/**
  * Crea una carpeta con el nombre y fecha especificados
  * Formato: YYYY-MM-DD
  */
@@ -111,6 +118,7 @@ export default {
   getYesterdayDate,
   getYesterdayDateFormatted,
   getTodayDate,
+  getTodayDateFormatted,
   createDownloadFolder,
   generatePDFFilename,
   randomDelay,

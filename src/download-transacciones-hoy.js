@@ -10,12 +10,12 @@ import http from 'http';
 import { format } from 'date-fns';
 
 /**
- * Script de producción para descargar transacciones
- * Descarga automáticamente PDFs de facturas del día anterior
+ * Script para descargar transacciones del día actual
+ * Descarga automáticamente PDFs de facturas del día de hoy
  *
  * Uso:
- *   npm run transacciones                    # Modo visible (para debugging)
- *   HEADLESS=true npm run transacciones      # Modo headless (para producción)
+ *   npm run transacciones-hoy                # Modo visible (para debugging)
+ *   HEADLESS=true npm run transacciones-hoy  # Modo headless (para producción)
  */
 
 // Configuración de modo headless desde variable de entorno
@@ -100,9 +100,9 @@ async function downloadTransacciones() {
     await page.waitForTimeout(8000);
     logger.info('✅ Navegación exitosa a Transacciones');
 
-    // 3. Obtener fecha del día anterior en formato DD/MM/YYYY
-    const formattedDate = getYesterdayDateFormatted();
-    logger.info(`📅 Fecha objetivo (día anterior): ${formattedDate}`);
+    // 3. Obtener fecha del día actual en formato DD/MM/YYYY
+    const formattedDate = getTodayDateFormatted();
+    logger.info(`📅 Fecha objetivo (día actual): ${formattedDate}`);
 
     // 4. Configurar los campos de fecha usando el datepicker (interacción real)
     logger.info('🔍 Configurando inputs de fecha mediante datepicker...');
@@ -717,7 +717,7 @@ async function downloadTransacciones() {
 }
 
 // Ejecutar script
-logger.info(`🚀 Iniciando descarga de transacciones (${HEADLESS_MODE ? 'HEADLESS' : 'VISIBLE'})`);
+logger.info(`🚀 Iniciando descarga de transacciones del DÍA ACTUAL (${HEADLESS_MODE ? 'HEADLESS' : 'VISIBLE'})`);
 downloadTransacciones()
   .then(() => {
     logger.info('✅ Script finalizado correctamente');
